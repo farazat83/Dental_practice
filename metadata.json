@@ -1,0 +1,6 @@
+{
+  "name": "Dental Chart & Patient Records",
+  "description": "An intuitive dental patient management application with interactive 32-tooth dental charts, patient clinical history tracking, appointment notes, local database persistence, and print-ready PDF export functionality.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
