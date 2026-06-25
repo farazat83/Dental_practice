@@ -33,7 +33,7 @@ export default function PrintReport({ patient, onClose, onUpdatePatient, lang }:
   // Lower teeth in FDI (Quadrant 4: 48-41, Quadrant 3: 31-38)
   const lowerTeeth = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
 
-  useEffect(() => {
+  const handleSaveAndSync = () => {
     if (onUpdatePatient) {
       onUpdatePatient({
         ...patient,
@@ -45,10 +45,16 @@ export default function PrintReport({ patient, onClose, onUpdatePatient, lang }:
         appointments
       });
     }
-  }, [firstName, lastName, dob, phone, firstVisit, appointments]);
+  };
 
   const handleTriggerPrint = () => {
+    handleSaveAndSync();
     window.print();
+  };
+
+  const handleClose = () => {
+    handleSaveAndSync();
+    onClose();
   };
 
   const getAge = (dobString: string) => {
@@ -411,7 +417,7 @@ export default function PrintReport({ patient, onClose, onUpdatePatient, lang }:
               {t.exportPdf}
             </button>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="px-3 py-1.5 border border-slate-600 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-lg transition-colors cursor-pointer"
             >
               {lang === 'fa' ? 'بستن و اعمال' : 'Close & Sync'}
