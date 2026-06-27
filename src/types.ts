@@ -52,4 +52,5 @@ export interface Patient {
   dentalChart: Record<number, ToothCondition[]>; // Teeth 1 through 32 mapped to active conditions
   ongoingTreatments?: Record<number, OngoingTreatment>; // Teeth 1 through 32 mapped to ongoing treatments
   appointments: Appointment[];
+  generalTreatmentNotes?: Record<string, string>; // Maps YYYY-MM-DD to notes string
 }

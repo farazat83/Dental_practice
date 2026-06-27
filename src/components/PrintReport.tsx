@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Patient, ToothCondition, Appointment, OngoingTreatment } from '../types';
-import { Printer, FileText, Activity, ShieldCheck, Heart, Trash2, Plus, Calendar, Clock, Edit3, X } from 'lucide-react';
+import { Printer, FileText, Activity, ShieldCheck, Heart, Trash2, Plus, Calendar, Clock, Edit3, X, ClipboardList } from 'lucide-react';
 import EliDentLogo from './EliDentLogo';
 import { Language, translations } from '../utils/translations';
 
@@ -786,6 +786,42 @@ export default function PrintReport({ patient, onClose, onUpdatePatient, lang }:
               ) : (
                 <div className="p-4 bg-slate-25/50 rounded-xl border border-dashed border-slate-150 text-center text-xs text-slate-500 font-medium">
                   {t.noTreatmentsRecorded}
+                </div>
+              )}
+
+              {/* General Treatment Notes Section for Print */}
+              {patient.generalTreatmentNotes && Object.keys(patient.generalTreatmentNotes).length > 0 && (
+                <div className="mt-4 mb-4" id="print-general-treatment-notes-section">
+                  <div className="bg-pink-50/50 p-2.5 rounded-lg border border-pink-150 mb-2.5">
+                    <h4 className="text-xs font-bold text-pink-900 uppercase tracking-wider m-0 flex items-center gap-1.5">
+                      <ClipboardList className="w-4 h-4 text-pink-600" />
+                      {lang === 'fa' ? 'یادداشت‌های عمومی درمان (بر اساس تاریخ قرار ملاقات)' : 'General Treatment Notes (By Appointment Date)'}
+                    </h4>
+                  </div>
+                  <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider text-[9px] border-b border-slate-200">
+                          <th className="p-2.5 w-32">{lang === 'fa' ? 'تاریخ جلسه' : 'Appointment Date'}</th>
+                          <th className="p-2.5">{lang === 'fa' ? 'توضیحات و اقدامات درمانی عمومی' : 'General Treatment Remarks & Progress Summary'}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(patient.generalTreatmentNotes)
+                          .sort((a, b) => b[0].localeCompare(a[0])) // newer first
+                          .map(([dateKey, textVal]) => (
+                            <tr key={dateKey} className="border-b border-slate-150 last:border-0 hover:bg-slate-25/50 transition-colors">
+                              <td className="p-2.5 font-bold text-slate-900 font-mono">
+                                {dateKey}
+                              </td>
+                              <td className="p-2.5 text-slate-700 font-semibold leading-relaxed whitespace-pre-line">
+                                {textVal}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>

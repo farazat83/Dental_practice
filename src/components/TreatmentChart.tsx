@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { OngoingTreatment } from '../types';
-import { Trash2, ShieldCheck, ClipboardList, Sparkles, FileText } from 'lucide-react';
+import { OngoingTreatment, Appointment } from '../types';
+import { Trash2, ShieldCheck, ClipboardList, Sparkles, FileText, Calendar, Plus, Edit } from 'lucide-react';
 import { Language, translations } from '../utils/translations';
 
 interface TreatmentChartProps {
@@ -8,6 +8,9 @@ interface TreatmentChartProps {
   onChange: (treatments: Record<number, OngoingTreatment>) => void;
   isEditable?: boolean;
   lang: Language;
+  appointments?: Appointment[];
+  generalNotes?: Record<string, string>;
+  onUpdateGeneralNotes?: (newNotes: Record<string, string>) => void;
 }
 
 // Config to describe treatments, style badges, and colors on teeth representation
@@ -35,11 +38,41 @@ const treatmentKeyConfig = [
 
 const popularShades = ['A1', 'A2', 'A3', 'A3.5', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4', 'D2', 'D3', 'D4'];
 
-export default function TreatmentChart({ treatments, onChange, isEditable = true, lang }: TreatmentChartProps) {
+export default function TreatmentChart({
+  treatments,
+  onChange,
+  isEditable = true,
+  lang,
+  appointments = [],
+  generalNotes = {},
+  onUpdateGeneralNotes
+}: TreatmentChartProps) {
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
   const [localNotes, setLocalNotes] = useState<string>('');
   const [localColorNote, setLocalColorNote] = useState<string>('');
   const [localToothColor, setLocalToothColor] = useState<string>('');
+
+  const [noteDateOption, setNoteDateOption] = useState<string>('');
+  const [noteCustomDate, setNoteCustomDate] = useState<string>('');
+  const [noteText, setNoteText] = useState<string>('');
+
+  const handleSaveGeneralNote = () => {
+    const dateKey = noteDateOption === 'custom' ? noteCustomDate.trim() : noteDateOption;
+    if (!dateKey || !noteText.trim()) return;
+
+    if (onUpdateGeneralNotes) {
+      const updated = {
+        ...generalNotes,
+        [dateKey]: noteText.trim()
+      };
+      onUpdateGeneralNotes(updated);
+      
+      // Reset form fields
+      setNoteDateOption('');
+      setNoteCustomDate('');
+      setNoteText('');
+    }
+  };
   
   const t = translations[lang];
 
@@ -572,6 +605,168 @@ export default function TreatmentChart({ treatments, onChange, isEditable = true
           )}
         </div>
       )}
+
+      {/* General Treatment Notes Section */}
+      <div className="mt-6 pt-5 border-t border-slate-100" id="general-treatment-notes-section">
+        <div className="flex items-center gap-2 mb-3">
+          <ClipboardList className="w-5 h-5 text-pink-500" />
+          <div>
+            <h4 className="text-sm font-bold text-slate-800">
+              {lang === 'fa' ? 'یادداشت‌های عمومی درمان (بر اساس قرار ملاقات)' : 'General Treatment Notes (Saved by Appointment Date)'}
+            </h4>
+            <p className="text-xs text-slate-500 font-semibold mt-0.5">
+              {lang === 'fa' 
+                ? 'ثبت خلاصه اقدامات و توضیحات کلی درمان به تفکیک تاریخ مراجعه بیمار.' 
+                : 'Record general session summaries or clinical remarks for specific appointment dates.'}
+            </p>
+          </div>
+        </div>
+
+        {isEditable && (
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <div className="md:col-span-1">
+                <label className="block text-xs font-bold text-slate-600 mb-1">
+                  {lang === 'fa' ? 'تاریخ جلسه درمانی' : 'Session Date'}
+                </label>
+                <select
+                  value={noteDateOption}
+                  onChange={(e) => {
+                    setNoteDateOption(e.target.value);
+                    if (e.target.value !== 'custom') {
+                      setNoteCustomDate('');
+                      // Automatically load note if it already exists for this date
+                      setNoteText(generalNotes[e.target.value] || '');
+                    } else {
+                      setNoteText('');
+                    }
+                  }}
+                  className="w-full p-2 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-pink-450 bg-white font-semibold text-slate-700"
+                >
+                  <option value="">-- {lang === 'fa' ? 'انتخاب تاریخ...' : 'Select Date...'} --</option>
+                  {appointments && appointments.map(apt => (
+                    <option key={apt.id} value={apt.date}>
+                      {apt.date} {apt.time ? `(${apt.time})` : ''}
+                    </option>
+                  ))}
+                  <option value="custom">{lang === 'fa' ? 'تاریخ دستی/دیگر...' : 'Custom Date...'}</option>
+                </select>
+              </div>
+
+              {noteDateOption === 'custom' && (
+                <div className="md:col-span-1">
+                  <label className="block text-xs font-bold text-slate-600 mb-1">
+                    {lang === 'fa' ? 'تاریخ سفارشی (مثال: ۲۰۲۶-۰۶-۲۷)' : 'Custom Date (e.g. 2026-06-27)'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="YYYY-MM-DD"
+                    value={noteCustomDate}
+                    onChange={(e) => {
+                      setNoteCustomDate(e.target.value);
+                      // Automatically load note if it already exists for this custom date
+                      setNoteText(generalNotes[e.target.value] || '');
+                    }}
+                    className="w-full p-2 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-pink-450 bg-white font-semibold text-slate-700 font-mono"
+                  />
+                </div>
+              )}
+
+              <div className={noteDateOption === 'custom' ? 'md:col-span-1' : 'md:col-span-2'}>
+                {/* empty space to align nicely */}
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-xs font-bold text-slate-600 mb-1">
+                {lang === 'fa' ? 'متن یادداشت عمومی درمان' : 'General Treatment Note Text'}
+              </label>
+              <textarea
+                rows={2}
+                placeholder={lang === 'fa' ? 'خلاصه درمان، مواد استفاده شده، یا پیشرفت کار این جلسه را یادداشت کنید...' : 'Write session-level remarks, materials used, overall recovery, or next steps here...'}
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                className="w-full p-2.5 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-pink-450 bg-white leading-relaxed font-semibold text-slate-705"
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleSaveGeneralNote}
+                disabled={!noteText.trim() || (!noteDateOption && !noteCustomDate)}
+                className="inline-flex items-center gap-1 px-4 py-1.5 bg-pink-600 text-white rounded-lg hover:bg-pink-700 font-bold text-xs shadow-xs cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {lang === 'fa' ? 'ثبت و ذخیره یادداشت' : 'Save General Note'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Saved general treatment notes list */}
+        {Object.keys(generalNotes).length > 0 ? (
+          <div className="space-y-2 mb-4">
+            {Object.entries(generalNotes)
+              .sort((a, b) => b[0].localeCompare(a[0])) // newer first
+              .map(([dateKey, textVal]) => (
+                <div key={dateKey} className="p-3 rounded-lg border border-slate-150 bg-slate-25/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 group">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-pink-700 bg-pink-50 px-2 py-0.5 rounded-md font-mono border border-pink-100">
+                        <Calendar className="w-3 h-3 text-pink-500" />
+                        {dateKey}
+                      </span>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-700 leading-relaxed whitespace-pre-line">
+                      {textVal}
+                    </p>
+                  </div>
+
+                  {isEditable && onUpdateGeneralNotes && (
+                    <div className="flex items-center gap-1 shrink-0 self-end sm:self-center opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const isAptDate = appointments && appointments.some(apt => apt.date === dateKey);
+                          if (isAptDate) {
+                            setNoteDateOption(dateKey);
+                          } else {
+                            setNoteDateOption('custom');
+                            setNoteCustomDate(dateKey);
+                          }
+                          setNoteText(textVal);
+                        }}
+                        className="p-1 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded transition-colors cursor-pointer"
+                        title={lang === 'fa' ? 'اصلاح یادداشت' : 'Edit Note'}
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(lang === 'fa' ? 'آیا برای حذف این یادداشت اطمینان دارید؟' : 'Are you sure you want to delete this general note?')) {
+                            const updated = { ...generalNotes };
+                            delete updated[dateKey];
+                            onUpdateGeneralNotes(updated);
+                          }
+                        }}
+                        className="p-1 hover:bg-red-50 text-slate-450 hover:text-red-500 rounded transition-colors cursor-pointer"
+                        title={lang === 'fa' ? 'حذف یادداشت' : 'Delete Note'}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+          </div>
+        ) : (
+          <div className="text-center py-4 bg-slate-25/30 rounded-lg border border-dashed border-slate-200 text-xs text-slate-450 font-semibold mb-4">
+            {lang === 'fa' ? 'هیچ یادداشت عمومی ثبت نشده است.' : 'No general treatment notes recorded yet.'}
+          </div>
+        )}
+      </div>
 
       {/* Legend for Treatments */}
       <div className="mt-4 pt-4 border-t border-slate-100">

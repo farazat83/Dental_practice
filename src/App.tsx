@@ -200,6 +200,21 @@ export default function App() {
     handleUpdatePatientsList(updatedList);
   };
 
+  // Edit Patient General Treatment Notes Update
+  const handleUpdateGeneralNotes = (newNotes: Record<string, string>) => {
+    if (!activePatient) return;
+    const updatedList = patients.map(p => {
+      if (p.id === activePatient.id) {
+        return {
+          ...p,
+          generalTreatmentNotes: newNotes
+        };
+      }
+      return p;
+    });
+    handleUpdatePatientsList(updatedList);
+  };
+
   // Edit Patient Appointments list
   const handleUpdateAppointments = (newApts: Appointment[]) => {
     if (!activePatient) return;
@@ -642,6 +657,9 @@ export default function App() {
                 onChange={handleUpdateOngoingTreatments}
                 isEditable={true}
                 lang={lang}
+                appointments={activePatient.appointments || []}
+                generalNotes={activePatient.generalTreatmentNotes || {}}
+                onUpdateGeneralNotes={handleUpdateGeneralNotes}
               />
 
               {/* 5. Appointments Timeline & Notes Section */}
