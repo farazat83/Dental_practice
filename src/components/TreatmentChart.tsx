@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { OngoingTreatment } from '../types';
 import { Trash2, ShieldCheck, ClipboardList, Sparkles, FileText } from 'lucide-react';
 import { Language, translations } from '../utils/translations';
@@ -37,12 +37,61 @@ const popularShades = ['A1', 'A2', 'A3', 'A3.5', 'A4', 'B1', 'B2', 'B3', 'B4', '
 
 export default function TreatmentChart({ treatments, onChange, isEditable = true, lang }: TreatmentChartProps) {
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
+  const [localNotes, setLocalNotes] = useState<string>('');
+  const [localColorNote, setLocalColorNote] = useState<string>('');
+  const [localToothColor, setLocalToothColor] = useState<string>('');
+  
   const t = translations[lang];
 
   // Upper teeth in FDI (Quadrant 1: 18-11, Quadrant 2: 21-28)
   const upperTeeth = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
   // Lower teeth in FDI (Quadrant 4: 48-41, Quadrant 3: 31-38)
   const lowerTeeth = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+
+  // Synchronize local states when selectedTooth or treatments prop changes
+  useEffect(() => {
+    if (selectedTooth !== null) {
+      const toothData = treatments[selectedTooth] || {};
+      if (document.activeElement?.id !== `notes-${selectedTooth}`) {
+        setLocalNotes(toothData.notes || '');
+      }
+      if (document.activeElement?.id !== `colorNote-${selectedTooth}`) {
+        setLocalColorNote(toothData.colorNote || '');
+      }
+      if (document.activeElement?.id !== `toothColor-${selectedTooth}`) {
+        setLocalToothColor(toothData.toothColor || '');
+      }
+    } else {
+      setLocalNotes('');
+      setLocalColorNote('');
+      setLocalToothColor('');
+    }
+  }, [selectedTooth, treatments]);
+
+  // Save outstanding edits for a given field
+  const saveActiveText = (toothNum: number, field: 'notes' | 'colorNote' | 'toothColor', val: string) => {
+    if (!isEditable) return;
+    const current = treatments[toothNum] || {};
+    if (current[field] !== val) {
+      const updated = {
+        ...current,
+        [field]: val
+      };
+      const newTreatments = { ...treatments };
+      newTreatments[toothNum] = updated;
+      onChange(newTreatments);
+    }
+  };
+
+  // Wrapper to save current tooth text fields before selecting another tooth or closing
+  const handleSelectTooth = (num: number | null) => {
+    if (selectedTooth !== null) {
+      saveActiveText(selectedTooth, 'notes', localNotes);
+      saveActiveText(selectedTooth, 'colorNote', localColorNote);
+      saveActiveText(selectedTooth, 'toothColor', localToothColor);
+    }
+    setSelectedTooth(num);
+  };
 
   const handleToggleTreatment = (toothNum: number, key: keyof Omit<OngoingTreatment, 'notes' | 'toothColor' | 'colorNote'>) => {
     if (!isEditable) return;
@@ -189,7 +238,7 @@ export default function TreatmentChart({ treatments, onChange, isEditable = true
         key={num}
         id={`treatment-tooth-btn-${num}`}
         type="button"
-        onClick={() => setSelectedTooth(selectedTooth === num ? null : num)}
+        onClick={() => handleSelectTooth(selectedTooth === num ? null : num)}
         className={`relative flex flex-col items-center justify-between p-1.5 rounded-lg shadow-xs transition-all cursor-pointer h-20 min-w-[42px] select-none ${toothBg} ${borderStyle}`}
       >
         <span className="text-[10px] font-mono font-bold text-slate-500">{num}</span>
@@ -251,7 +300,7 @@ export default function TreatmentChart({ treatments, onChange, isEditable = true
             onClick={() => {
               if (window.confirm(t.confirmClearTreatments)) {
                 onChange({});
-                setSelectedTooth(null);
+                handleSelectTooth(null);
               }
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 rounded-lg border border-red-150 transition-colors cursor-pointer font-bold"
@@ -312,7 +361,7 @@ export default function TreatmentChart({ treatments, onChange, isEditable = true
               </p>
             </div>
             <button
-              onClick={() => setSelectedTooth(null)}
+              onClick={() => handleSelectTooth(null)}
               className="text-xs font-bold text-purple-600 hover:text-purple-800 px-3 py-1.5 rounded-lg bg-white border border-purple-150 hover:bg-purple-50 transition-colors cursor-pointer"
             >
               {t.closeToothForm}
@@ -368,8 +417,13 @@ export default function TreatmentChart({ treatments, onChange, isEditable = true
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">{t.toothColorLabel}</label>
                       <select
-                        value={(treatments[selectedTooth] || {}).toothColor || ''}
-                        onChange={(e) => handleUpdateText(selectedTooth, 'toothColor', e.target.value)}
+                        id={`toothColor-${selectedTooth}`}
+                        value={localToothColor || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setLocalToothColor(val);
+                          saveActiveText(selectedTooth, 'toothColor', val);
+                        }}
                         className="w-full text-xs p-2 bg-white rounded-lg border border-slate-200 font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-pink-400"
                       >
                         <option value="">{t.chooseVitaShade}</option>
@@ -380,12 +434,14 @@ export default function TreatmentChart({ treatments, onChange, isEditable = true
                       </select>
 
                       {/* Alternate manual entry if other custom shade is picked, or to write something precise */}
-                      {((treatments[selectedTooth] || {}).toothColor === 'custom' || !popularShades.includes((treatments[selectedTooth] || {}).toothColor || '')) && (treatments[selectedTooth] || {}).toothColor !== '' && (
+                      {((localToothColor === 'custom' || !popularShades.includes(localToothColor || '')) && localToothColor !== '') && (
                         <input
+                          id={`toothColor-manual-${selectedTooth}`}
                           type="text"
                           placeholder="e.g., Bleach 05, Custom gradient..."
-                          value={(treatments[selectedTooth] || {}).toothColor === 'custom' ? '' : ((treatments[selectedTooth] || {}).toothColor || '')}
-                          onChange={(e) => handleUpdateText(selectedTooth, 'toothColor', e.target.value)}
+                          value={localToothColor === 'custom' ? '' : (localToothColor || '')}
+                          onChange={(e) => setLocalToothColor(e.target.value)}
+                          onBlur={() => saveActiveText(selectedTooth, 'toothColor', localToothColor)}
                           className="w-full text-xs p-2 bg-white rounded-lg border border-slate-200 font-semibold text-slate-750 mt-2 focus:ring-1 focus:ring-pink-400"
                         />
                       )}
@@ -396,9 +452,12 @@ export default function TreatmentChart({ treatments, onChange, isEditable = true
                           <button
                             key={shade}
                             type="button"
-                            onClick={() => handleUpdateText(selectedTooth, 'toothColor', shade)}
+                            onClick={() => {
+                              setLocalToothColor(shade);
+                              saveActiveText(selectedTooth, 'toothColor', shade);
+                            }}
                             className={`px-2 py-1 rounded text-[10px] font-bold border transition-colors ${
-                              (treatments[selectedTooth] || {}).toothColor === shade
+                              localToothColor === shade
                                 ? 'bg-pink-100 text-pink-850 border-pink-300'
                                 : 'bg-white text-slate-500 hover:bg-slate-50 border-slate-200'
                             }`}
@@ -413,10 +472,12 @@ export default function TreatmentChart({ treatments, onChange, isEditable = true
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">{t.colorNoteLabel}</label>
                       <textarea
+                        id={`colorNote-${selectedTooth}`}
                         rows={2}
                         placeholder={t.colorNotePlaceholder}
-                        value={(treatments[selectedTooth] || {}).colorNote || ''}
-                        onChange={(e) => handleUpdateText(selectedTooth, 'colorNote', e.target.value)}
+                        value={localColorNote}
+                        onChange={(e) => setLocalColorNote(e.target.value)}
+                        onBlur={() => saveActiveText(selectedTooth, 'colorNote', localColorNote)}
                         className="w-full text-xs p-2.5 bg-white rounded-lg border border-slate-200 font-semibold text-slate-750 focus:outline-none focus:ring-1 focus:ring-pink-400 focus:border-pink-400 resize-none"
                       />
                     </div>
@@ -431,10 +492,12 @@ export default function TreatmentChart({ treatments, onChange, isEditable = true
                   {t.clinicalNotesLabel} #{selectedTooth}
                 </label>
                 <textarea
+                  id={`notes-${selectedTooth}`}
                   rows={2.5}
                   placeholder={t.clinicalNotesPlaceholder}
-                  value={(treatments[selectedTooth] || {}).notes || ''}
-                  onChange={(e) => handleUpdateText(selectedTooth, 'notes', e.target.value)}
+                  value={localNotes}
+                  onChange={(e) => setLocalNotes(e.target.value)}
+                  onBlur={() => saveActiveText(selectedTooth, 'notes', localNotes)}
                   className="w-full text-xs p-3 bg-white rounded-lg border border-slate-200 font-semibold text-slate-750 focus:outline-none focus:ring-1 focus:ring-purple-400 focus:border-purple-400"
                 />
               </div>
